@@ -1,2 +1,2 @@
 IGNORA COMPLETAMENTE LAS PRIORITY ZONES AHORA MISMO
-VER SI SE PUEDE IMPLEMENTAR QUE APROVECHE MAX_DRONES > 1, AHORA MISMO NO LO HACE Y SOLO PASA 1 A LA VEZ
+si aprovehca maxdrones > 1, parecia que no, pero es porque la mayoria de los mapas tienen aguna zona de cuello de botella
