@@ -8,7 +8,7 @@ MANDATORY OUTPUT FORMAT (spec §VII.5)
   One line per active turn.
   Per drone per turn, one of:
     D<N>-<zone>              drone arrives at zone
-    D<N>-<origin>-<dest>     drone in transit to a restricted zone (turn 1 of 2)
+    D<N>-<origin>-<dest>   drone in transit to a restricted zone (turn 1 of 2)
   Drones that don't move: omitted from the line.
   Delivered drones: not tracked after reaching end zone.
 
@@ -72,19 +72,20 @@ def _zone_color(text: str, color: str | None) -> str:
 class DroneStats:
     """Statistics collected for one drone during simulation replay."""
     drone_id: int
-    zones_visited: list[str]        = field(default_factory=list)
-    wait_turns: int                 = 0
-    transit_turns: int              = 0
-    move_turns: int                 = 0
-    total_turns: int                = 0
-    weighted_cost: int              = 0
+    zones_visited: list[str] = field(default_factory=list)
+    wait_turns: int = 0
+    transit_turns: int = 0
+    move_turns: int = 0
+    total_turns: int = 0
+    weighted_cost: int = 0
     delivered_at_turn: Optional[int] = None
 
     @property
     def path_length(self) -> int:
         """Unique zones visited (excluding start)."""
         seen: set[str] = set()
-        return sum(1 for z in self.zones_visited if not (z in seen or seen.add(z)))  # type: ignore[func-returns-value]
+        return sum(1 for z in self.zones_visited
+                   if not (z in seen or seen.add(z)))
 
     @property
     def efficiency(self) -> float:
@@ -101,10 +102,10 @@ class DroneStats:
 @dataclass
 class TurnRecord:
     turn: int
-    moves: list[str]          = field(default_factory=list)   # raw spec tokens
-    drones_moved: int         = 0
-    drones_in_transit: int    = 0
-    drones_waiting: int       = 0
+    moves: list[str] = field(default_factory=list)   # raw spec tokens
+    drones_moved: int = 0
+    drones_in_transit: int = 0
+    drones_waiting: int = 0
     drones_delivered_this_turn: int = 0
 
 
@@ -126,10 +127,10 @@ class Simulator:
         paths: list[list[tuple[str, int]]],
         nb_drones: int,
     ) -> None:
-        self.graph     = graph
+        self.graph = graph
         self.nb_drones = nb_drones
 
-        # Convert raw (zone_name, turn) path lists to sorted (turn, zone) schedules.
+        # Convert raw (zone_name, turn) path lists to sorted (turn, zone).
         self.schedules: list[list[tuple[int, str]]] = []
         for path in paths:
             by_turn: dict[int, str] = {}
@@ -175,7 +176,7 @@ class Simulator:
         self,
     ) -> tuple[int, list[TurnRecord], list[DroneStats]]:
         """Simulate all drones turn by turn. Returns data, does not print."""
-        end_name   = self.graph.end_zone.name    # type: ignore[union-attr]
+        end_name = self.graph.end_zone.name    # type: ignore[union-attr]
         start_name = self.graph.start_zone.name  # type: ignore[union-attr]
 
         if not any(self.schedules):
@@ -186,9 +187,9 @@ class Simulator:
             default=0,
         )
 
-        drone_pos:  list[str]  = [start_name] * self.nb_drones
-        sched_ptr:  list[int]  = [0]          * self.nb_drones
-        delivered:  list[bool] = [False]      * self.nb_drones
+        drone_pos:  list[str] = [start_name] * self.nb_drones
+        sched_ptr:  list[int] = [0] * self.nb_drones
+        delivered:  list[bool] = [False] * self.nb_drones
 
         stats = [DroneStats(drone_id=i + 1) for i in range(self.nb_drones)]
 
@@ -208,7 +209,7 @@ class Simulator:
                     continue
 
                 sched = self.schedules[i]
-                ptr   = sched_ptr[i]
+                ptr = sched_ptr[i]
 
                 if ptr >= len(sched):
                     rec.drones_waiting += 1
@@ -217,7 +218,7 @@ class Simulator:
 
                 next_turn, next_zone = sched[ptr]
 
-                # ── Drone arrives this turn ───────────────────────────────────
+                # ── Drone arrives this turn
                 if next_turn == turn:
                     prev_zone = drone_pos[i]
 
@@ -228,16 +229,16 @@ class Simulator:
                         stats[i].wait_turns += 1
                         continue
 
-                    dest     = self.graph.zones[next_zone]
-                    colored  = _zone_color(next_zone, dest.color)
-                    token    = f"D{i + 1}-{colored}"
+                    dest = self.graph.zones[next_zone]
+                    colored = _zone_color(next_zone, dest.color)
+                    token = f"D{i + 1}-{colored}"
                     rec.moves.append(token)
 
                     drone_pos[i] = next_zone
                     sched_ptr[i] += 1
-                    rec.drones_moved      += 1
-                    stats[i].move_turns   += 1
-                    stats[i].total_turns  += 1
+                    rec.drones_moved += 1
+                    stats[i].move_turns += 1
+                    stats[i].total_turns += 1
                     stats[i].weighted_cost += dest.movement_cost()
                     stats[i].zones_visited.append(next_zone)
 
@@ -246,20 +247,20 @@ class Simulator:
                         stats[i].delivered_at_turn = turn
                         rec.drones_delivered_this_turn += 1
 
-                # ── First turn of a 2-turn restricted move ────────────────────
+                # ── First turn of a 2-turn restricted move
                 # Drone will arrive next turn. Emit the in-transit label.
-                # Order: origin (current) - destination (next zone) — spec §VII.5
+                # Order: origin (current) - destination (next zone)
                 elif next_turn == turn + 1:
                     dest = self.graph.zones[next_zone]
                     if dest.zone_type == ZoneType.RESTRICTED:
                         origin = drone_pos[i]           # current zone
-                        token  = f"D{i + 1}-{origin}-{next_zone}"
+                        token = f"D{i + 1}-{origin}-{next_zone}"
                         rec.moves.append(token)
                         rec.drones_in_transit += 1
                         stats[i].transit_turns += 1
                     # ptr NOT advanced — drone hasn't arrived yet
 
-                # ── next_turn > turn + 1: drone waiting silently ──────────────
+                # ── next_turn > turn + 1: drone waiting silently
                 else:
                     rec.drones_waiting += 1
                     stats[i].wait_turns += 1
@@ -304,7 +305,8 @@ class Simulator:
         def bar(label: str, value: str) -> None:
             """Print one key/value row."""
             dots = "." * max(1, W - len(label) - len(value) - 4)
-            print(f"  {_c(label, 'cyan')} {_c(dots, 'dim')} {_c(value, 'white', 'bold')}")
+            print(f"  {_c(label, 'cyan')} {_c(dots, 'dim')} "
+                  "{_c(value, 'white', 'bold')}")
 
         def section(title: str) -> None:
             print()
@@ -320,20 +322,20 @@ class Simulator:
         print(f"  {_c('DRONE ROUTING  —  SIMULATION REPORT', 'cyan', 'bold')}")
         print(_c("  " + "═" * (W - 2), "cyan"))
 
-        # ── Simulation summary ────────────────────────────────────────────────
+        # ── Simulation summary
         section("Simulation")
         bar("Total turns",        str(total_turns))
         bar("Drones routed",      f"{self.nb_drones}/{self.nb_drones}")
-        bar("Start zone",         self.graph.start_zone.name)   # type: ignore[union-attr]
-        bar("End zone",           self.graph.end_zone.name)     # type: ignore[union-attr]
+        bar("Start zone",         self.graph.start_zone.name)
+        bar("End zone",           self.graph.end_zone.name)
         bar("Zones in graph",     str(len(self.graph.zones)))
 
-        # ── Turn-by-turn breakdown ────────────────────────────────────────────
+        # ── Turn-by-turn breakdown
         section("Turn breakdown")
-        active_turns  = sum(1 for r in turn_records if r.moves)
-        silent_turns  = sum(1 for r in turn_records if not r.moves)
-        max_moved     = max((r.drones_moved for r in turn_records), default=0)
-        avg_moved     = (
+        active_turns = sum(1 for r in turn_records if r.moves)
+        silent_turns = sum(1 for r in turn_records if not r.moves)
+        max_moved = max((r.drones_moved for r in turn_records), default=0)
+        avg_moved = (
             sum(r.drones_moved for r in turn_records) / active_turns
             if active_turns else 0.0
         )
@@ -342,10 +344,11 @@ class Simulator:
         bar("Peak drones moved in one turn",  str(max_moved))
         bar("Avg drones moved / active turn", f"{avg_moved:.2f}")
 
-        # ── Per-drone table ───────────────────────────────────────────────────
+        # ── Per-drone table
         section("Per-drone stats")
         col_w = [6, 10, 6, 8, 7, 12]
-        headers = ["Drone", "Delivered", "Moves", "Waits", "Cost", "Efficiency"]
+        headers = ["Drone", "Delivered", "Moves",
+                   "Waits", "Cost", "Efficiency"]
         header_row = "  " + "  ".join(
             _c(h.ljust(col_w[j]), "yellow") for j, h in enumerate(headers)
         )
@@ -353,12 +356,13 @@ class Simulator:
         divider()
         for st in drone_stats:
             delivered_str = (
-                f"turn {st.delivered_at_turn}" if st.delivered_at_turn else _c("—", "red")
+                f"turn {st.delivered_at_turn}"
+                if st.delivered_at_turn else _c("—", "red")
             )
             eff_pct = f"{st.efficiency * 100:.0f}%"
             row = "  " + "  ".join([
                 _c(f"D{st.drone_id}".ljust(col_w[0]),   "white"),
-                delivered_str.ljust(col_w[1] + 9),      # +9 for ANSI escape len
+                delivered_str.ljust(col_w[1] + 9),      # +9 for ANSI escape
                 str(st.move_turns).ljust(col_w[2]),
                 str(st.wait_turns).ljust(col_w[3]),
                 str(st.weighted_cost).ljust(col_w[4]),
@@ -366,11 +370,12 @@ class Simulator:
             ])
             print(row)
 
-        # ── Secondary spec metrics ────────────────────────────────────────────
+        # ── Secondary spec metrics
         section("Secondary metrics  (spec §VII.6)")
         total_weighted = sum(st.weighted_cost for st in drone_stats)
         avg_turns = (
-            sum(st.delivered_at_turn for st in drone_stats if st.delivered_at_turn)
+            sum(st.delivered_at_turn for st in drone_stats
+                if st.delivered_at_turn)
             / self.nb_drones
         )
         bar("Total weighted path cost",   str(total_weighted))
@@ -378,19 +383,22 @@ class Simulator:
         bar("Total wait turns (all drones)",
             str(sum(st.wait_turns for st in drone_stats)))
 
-        # ── MCF algorithm metrics ─────────────────────────────────────────────
+        # ── MCF algorithm metrics
         if mcf_result:
             section(f"Algorithm  —  {mcf_result.algorithm}")
             bar("SSP iterations",      str(mcf_result.ssp_iterations))
             bar("MCF total cost",      str(mcf_result.total_cost))
             bar("Avg cost per path",   f"{mcf_result.avg_path_cost:.2f}")
-            bar("Avg drones per path", f"{mcf_result.avg_drones_per_iteration:.2f}")
+            bar("Avg drones per path",
+                f"{mcf_result.avg_drones_per_iteration:.2f}")
             bar("Wall-clock time",     f"{mcf_result.elapsed_ms:.2f} ms")
 
             if mcf_result.algorithm == "dijkstra":
-                bar("Heap pops (nodes settled)", str(mcf_result.dijkstra_nodes_settled))
+                bar("Heap pops (nodes settled)",
+                    str(mcf_result.dijkstra_nodes_settled))
             else:
-                bar("Edge relaxations",          str(mcf_result.bellman_ford_relaxations))
+                bar("Edge relaxations",
+                    str(mcf_result.bellman_ford_relaxations))
 
             # Path-by-path breakdown
             print()
@@ -398,10 +406,10 @@ class Simulator:
             for idx, (pcost, pflow) in enumerate(
                 zip(mcf_result.path_costs, mcf_result.path_flows), 1
             ):
-                bar(f"    Path {idx}  (×{pflow} drone{'s' if pflow > 1 else ''})",
+                bar(f"  Path {idx}  ({pflow} drone{'s' if pflow > 1 else ''})",
                     f"cost {pcost}")
 
-        # ── Algorithm comparison ──────────────────────────────────────────────
+        # ── Algorithm comparison
         if mcf_result and compare_result:
             section("Algorithm comparison")
             a, b = mcf_result, compare_result
@@ -421,7 +429,8 @@ class Simulator:
         # ── Footer ───────────────────────────────────────────────────────────
         print()
         print(_c("  " + "═" * (W - 2), "cyan"))
-        status = _c(f"  ✓  All {self.nb_drones} drones delivered in {total_turns} turns",
+        status = _c(f"  ✓  All {self.nb_drones}"
+                    f"drones delivered in {total_turns} turns",
                     "green", "bold")
         print(status)
         print(_c("  " + "═" * (W - 2), "cyan"))

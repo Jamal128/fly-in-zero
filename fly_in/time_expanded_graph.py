@@ -45,7 +45,7 @@ class TimeExpandedGraph:
 
     def build(self) -> MinCostFlow:
         """Register all TimeNodes, construct the MCF graph, return it."""
-        # 1. Pre-register all nodes so next_id is stable before MinCostFlow init
+        # 1. Pre-register all nodes so next_id is stable before MinCostFlow
         for turn in range(self.max_turns + 1):
             for zone_name, zone in self.graph.zones.items():
                 if zone.zone_type != ZoneType.BLOCKED:
@@ -69,7 +69,7 @@ class TimeExpandedGraph:
         return self.graph.zones[zone_name].max_drones
 
     def _add_wait_edges(self, mcf: MinCostFlow) -> None:
-        """Stay edges: zone_t → zone_{t+1}, capacity=zone.max_drones, cost=0."""
+        """Stay edges: zone_t → zone_{t+1}, capacity=max_drones, cost=0."""
         for turn in range(self.max_turns):
             for zone_name, zone in self.graph.zones.items():
                 if zone.zone_type == ZoneType.BLOCKED:
@@ -102,7 +102,8 @@ class TimeExpandedGraph:
 
                     u = self._get_id(TimeNode(zone_name, turn))
                     v = self._get_id(TimeNode(neighbor.name, arrival))
-                    cap = min(conn.max_link_capacity, self._zone_capacity(neighbor.name))
+                    cap = min(conn.max_link_capacity,
+                              self._zone_capacity(neighbor.name))
                     mcf.add_edge(u, v, cap, cost)
 
     def _add_source_edges(self, mcf: MinCostFlow) -> None:
