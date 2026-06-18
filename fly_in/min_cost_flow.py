@@ -1,11 +1,11 @@
-"""Minimum Cost Flow — Successive Shortest Paths with two interchangeable backends.
+"""Minimum Cost Flow — Successive Shortest Paths.
 
 ALGORITHMS
 ==========
 Both implement the same SSP loop. They differ only in how they find the
 shortest path in the residual graph each iteration.
 
-  Bellman-Ford  O(V × E) per iteration
+  Bellman-Ford  O(V x E) per iteration
   ────────────────────────────────────────────────────────────────
   Relaxes every edge V-1 times. Works directly on real costs.
   Safe with negative back-edges (no negative cycles in a TEG).
@@ -94,7 +94,7 @@ class RunResult:
         algorithm:              "dijkstra" or "bellman_ford"
         ssp_iterations:         Number of shortest-path calls made.
         elapsed_ms:             Wall-clock time for the entire run().
-        path_costs:             Cost of each SSP path found (one per iteration).
+        path_costs:            Cost of each SSP path found (one per iteration).
         path_flows:             Flow pushed on each SSP path.
         avg_path_cost:          Arithmetic mean of path_costs.
 
@@ -126,11 +126,13 @@ class RunResult:
 
     @property
     def avg_path_cost(self) -> float:
-        return sum(self.path_costs) / len(self.path_costs) if self.path_costs else 0.0
+        return (sum(self.path_costs) / len(self.path_costs)
+                if self.path_costs else 0.0)
 
     @property
     def avg_drones_per_iteration(self) -> float:
-        return sum(self.path_flows) / len(self.path_flows) if self.path_flows else 0.0
+        return (sum(self.path_flows) / len(self.path_flows)
+                if self.path_flows else 0.0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -167,8 +169,10 @@ class MinCostFlow:
         """
         fwd_idx = len(self.adj[u])
         bck_idx = len(self.adj[v])
-        self.adj[u].append(Edge(to=v, cap=cap,  cost=cost,  flow=0, rev_idx=bck_idx))
-        self.adj[v].append(Edge(to=u, cap=0,    cost=-cost, flow=0, rev_idx=fwd_idx))
+        self.adj[u].append(Edge(to=v, cap=cap,  cost=cost,
+                                flow=0, rev_idx=bck_idx))
+        self.adj[v].append(Edge(to=u, cap=0,    cost=-cost,
+                                flow=0, rev_idx=fwd_idx))
 
     # ─────────────────────────────────────────────────────────────────────────
     # DIJKSTRA  (with Johnson's potentials)
@@ -185,14 +189,14 @@ class MinCostFlow:
         This is ≥ 0 when potentials are up to date, so Dijkstra is valid.
 
         Returns:
-            dist:           dist[v] = min reduced-cost distance to v from source.
-            prev_node:      predecessor node on cheapest path (-1 if unreachable).
+            dist: dist[v] = min reduced-cost distance to v from source.
+            prev_node: predecessor node on cheapest path (-1 if unreachable).
             prev_edge:      index in adj[prev_node[v]] of the edge used.
             nodes_settled:  number of heap-pop operations (work metric).
         """
-        dist: list[int]      = [INF] * self.n
-        prev_node: list[int] = [-1]  * self.n
-        prev_edge: list[int] = [-1]  * self.n
+        dist: list[int] = [INF] * self.n
+        prev_node: list[int] = [-1] * self.n
+        prev_edge: list[int] = [-1] * self.n
         dist[source] = 0
         nodes_settled = 0
 
@@ -209,11 +213,11 @@ class MinCostFlow:
                 if edge.residual <= 0:
                     continue
 
-                reduced  = edge.cost + potentials[u] - potentials[edge.to]
+                reduced = edge.cost + potentials[u] - potentials[edge.to]
                 new_dist = dist[u] + reduced
 
                 if new_dist < dist[edge.to]:
-                    dist[edge.to]      = new_dist
+                    dist[edge.to] = new_dist
                     prev_node[edge.to] = u
                     prev_edge[edge.to] = edge_idx
                     heapq.heappush(heap, (new_dist, edge.to))
@@ -240,9 +244,9 @@ class MinCostFlow:
             prev_edge:    index in adj[prev_node[v]] of the edge used.
             relaxations:  total edge relaxations performed (work metric).
         """
-        dist: list[int]      = [INF] * self.n
-        prev_node: list[int] = [-1]  * self.n
-        prev_edge: list[int] = [-1]  * self.n
+        dist: list[int] = [INF] * self.n
+        prev_node: list[int] = [-1] * self.n
+        prev_edge: list[int] = [-1] * self.n
         dist[source] = 0
         relaxations = 0
 
@@ -256,7 +260,7 @@ class MinCostFlow:
                         continue
                     new_dist = dist[u] + edge.cost
                     if new_dist < dist[edge.to]:
-                        dist[edge.to]      = new_dist
+                        dist[edge.to] = new_dist
                         prev_node[edge.to] = u
                         prev_edge[edge.to] = edge_idx
                         updated = True
@@ -293,7 +297,7 @@ class MinCostFlow:
         bottleneck = limit
         v = sink
         while v != source:
-            u    = prev_node[v]
+            u = prev_node[v]
             edge = self.adj[u][prev_edge[v]]
             bottleneck = min(bottleneck, edge.residual)
             v = u
@@ -304,11 +308,11 @@ class MinCostFlow:
         # Phase 2: commit flow
         v = sink
         while v != source:
-            u   = prev_node[v]
+            u = prev_node[v]
             fwd = self.adj[u][prev_edge[v]]
             bck = self.adj[v][fwd.rev_idx]
             fwd.flow += bottleneck
-            bck.flow -= bottleneck    # back-edge gains residual for future undo
+            bck.flow -= bottleneck    # back-edge gains residual for future
             v = u
 
         return bottleneck
@@ -353,7 +357,8 @@ class MinCostFlow:
 
             # ── 1. Shortest path ─────────────────────────────────────────────
             if algorithm == "dijkstra":
-                dist, prev_node, prev_edge, work = self._dijkstra(source, potentials)
+                dist, prev_node, prev_edge, work = self._dijkstra(source,
+                                                                  potentials)
                 result.dijkstra_nodes_settled += work
 
                 if dist[sink] == INF:
@@ -383,9 +388,9 @@ class MinCostFlow:
             )
 
             # ── 3. Record metrics ────────────────────────────────────────────
-            result.flow_sent       += pushed
-            result.total_cost      += pushed * real_cost
-            result.ssp_iterations  += 1
+            result.flow_sent += pushed
+            result.total_cost += pushed * real_cost
+            result.ssp_iterations += 1
             result.path_costs.append(real_cost)
             result.path_flows.append(pushed)
 
