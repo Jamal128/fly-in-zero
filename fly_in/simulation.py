@@ -306,7 +306,7 @@ class Simulator:
             """Print one key/value row."""
             dots = "." * max(1, W - len(label) - len(value) - 4)
             print(f"  {_c(label, 'cyan')} {_c(dots, 'dim')} "
-                  "{_c(value, 'white', 'bold')}")
+                  f"{_c(value, 'white', 'bold')}")
 
         def section(title: str) -> None:
             print()
